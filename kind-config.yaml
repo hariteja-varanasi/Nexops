@@ -1,0 +1,53 @@
+# =====================================================================
+# kind cluster for NexOps
+#
+# Three "nodes" that are really three Docker containers on one EC2 box.
+# That is the whole trick that lets this course run on a single machine.
+#
+#   kind create cluster --name nexops --config kind-config.yaml
+# =====================================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: nexops
+
+networking:
+  # Bind the API server to all interfaces so kubectl works over SSH tunnels.
+  apiServerAddress: "0.0.0.0"
+  apiServerPort: 6443
+  # kind's default CNI is fine, but it does NOT enforce NetworkPolicy. The
+  # policies in kubernetes/base/ingress/networkpolicy.yaml will be accepted and
+  # silently ignored unless you disable the default CNI and install Calico.
+  # Left on by default so the cluster comes up without extra steps.
+  disableDefaultCNI: false
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+
+nodes:
+  # ---------------- control plane ----------------
+  - role: control-plane
+    image: kindest/node:v1.29.2@sha256:51a1434a5397193442f0be2a297b488b6c919ce8a3931be0ce822606ea5ca245
+    kubeadmConfigPatches:
+      # Label the node so the ingress-nginx "kind" manifest schedules here.
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      # Publish the ingress controller's ports on the EC2 host itself, so
+      # http://<public-ip> reaches the cluster with no port-forward and no
+      # LoadBalancer (kind has no cloud provider to give it one).
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+  # ---------------- workers ----------------
+  # Two workers so `kubectl get pods -o wide` shows real scheduling across
+  # nodes, and topologySpreadConstraints have somewhere to spread to.
+  - role: worker
+    image: kindest/node:v1.29.2@sha256:51a1434a5397193442f0be2a297b488b6c919ce8a3931be0ce822606ea5ca245
+  - role: worker
+    image: kindest/node:v1.29.2@sha256:51a1434a5397193442f0be2a297b488b6c919ce8a3931be0ce822606ea5ca245

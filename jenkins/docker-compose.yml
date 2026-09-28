@@ -1,0 +1,96 @@
+# =====================================================================
+# Jenkins + SonarQube for the NexOps training box
+#
+#   cd jenkins && docker compose up -d
+#   Jenkins   http://<ec2-ip>:8080
+#   SonarQube http://<ec2-ip>:9000
+#
+# Both run as plain containers on the EC2 host, NOT inside kind. CI tooling
+# that lives in the cluster it deploys to cannot be trusted to recover that
+# cluster when it breaks.
+# =====================================================================
+
+name: nexops-ci
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jenkins
+    restart: unless-stopped
+    user: root                      # needed for the mounted Docker socket
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Dhudson.model.DownloadService.noSignatureCheck=true"
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set JENKINS_ADMIN_PASSWORD in jenkins/.env}
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc.yaml
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - ./casc.yaml:/var/jenkins_home/casc.yaml:ro
+      # Docker-outside-of-Docker: the pipeline's `docker build` runs on the HOST
+      # daemon, not a nested one. Faster, and the image cache is shared with
+      # everything else on the box.
+      #
+      # This grants the Jenkins container root on the host. Acceptable on a
+      # disposable training instance; on anything real use a rootless agent.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Lets pipelines reach the kind cluster if you ever need kubectl from CI.
+      - ${HOME}/.kube:/var/jenkins_home/.kube:ro
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    networks: [jenkins]
+
+  sonarqube:
+    image: sonarqube:10-community
+    container_name: sonarqube
+    restart: unless-stopped
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?set SONAR_DB_PASSWORD in jenkins/.env}
+      # Elasticsearch inside SonarQube refuses to start as root.
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+    depends_on:
+      sonar-db: { condition: service_healthy }
+    # SonarQube's embedded Elasticsearch needs a higher mmap limit than the
+    # Docker default. If it crash-loops, run on the host:
+    #   sudo sysctl -w vm.max_map_count=262144
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    networks: [jenkins]
+
+  sonar-db:
+    image: postgres:16-alpine
+    container_name: sonar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
+    volumes:
+      - sonar-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [jenkins]
+
+volumes:
+  jenkins-home:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
+  sonar-db-data:
+
+networks:
+  jenkins:
+    name: jenkins       # the Jenkinsfile attaches its test containers to this

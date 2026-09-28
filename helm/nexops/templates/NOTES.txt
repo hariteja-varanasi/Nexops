@@ -1,0 +1,53 @@
+NexOps {{ .Chart.AppVersion }} is installed as "{{ .Release.Name }}" in namespace {{ .Release.Namespace }}.
+
+Watch it come up:
+
+  kubectl -n {{ .Release.Namespace }} get pods -w
+
+The init container runs the schema migration first, so the backend pods stay in
+Init: for a few seconds on a fresh install. That is expected.
+
+Reach it:
+{{- if .Values.ingress.enabled }}
+
+  echo "$(hostname -I | awk '{print $1}')  {{ .Values.ingress.host }}" | sudo tee -a /etc/hosts
+  open http://{{ .Values.ingress.host }}
+{{- if .Values.ingress.includeIPRule }}
+
+  Or straight on the host IP, no hosts entry needed:
+  open http://$(hostname -I | awk '{print $1}')
+{{- end }}
+{{- else }}
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "nexops.fullname" . }}-frontend 8080:80
+  open http://localhost:8080
+{{- end }}
+
+{{- if .Values.config.seedEnabled }}
+
+Demo sign-in: {{ .Values.secrets.seedAdminUsername }} / (the seedAdminPassword value)
+{{- end }}
+
+Check the API directly:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "nexops.fullname" . }}-backend {{ .Values.backend.port }}:{{ .Values.backend.port }}
+  curl -s localhost:{{ .Values.backend.port }}/api/health | jq
+
+{{- if not .Values.config.prometheusUrl }}
+
+Note: PROMETHEUS_URL and LOKI_URL are unset, so the Monitoring and Logs pages
+read from PostgreSQL and label themselves source="database". Install the
+monitoring and logging stacks, then:
+
+  helm upgrade {{ .Release.Name }} ./helm/nexops --reuse-values \
+    --set config.prometheusUrl=http://prometheus-server.monitoring.svc.cluster.local \
+    --set config.lokiUrl=http://loki.logging.svc.cluster.local:3100
+{{- end }}
+
+{{- if .Values.secrets.createSecret }}
+
+WARNING: this release created its own Secret from values.yaml, which is fine for
+a training cluster and wrong for anything else. For a real environment set
+secrets.createSecret=false and secrets.existingSecret to a Secret you created
+out of band. See docs/kubernetes.md.
+{{- end }}

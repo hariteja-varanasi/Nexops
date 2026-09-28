@@ -1,0 +1,24 @@
+# Non-secret configuration. Anything in here is readable by anyone with
+# `kubectl get configmap`, so credentials belong in the Secret instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexops-config
+  labels:
+    app.kubernetes.io/part-of: nexops
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  LOG_LEVEL: "info"
+  JWT_EXPIRES_IN: "8h"
+  CACHE_TTL_SECONDS: "30"
+  # Service DNS inside the cluster: <service>.<namespace>.svc.cluster.local.
+  # The short name works because the pod's search domain covers its own namespace.
+  REDIS_URL: "redis://redis:6379"
+  CORS_ORIGIN: "http://nexops.local,http://nexops-dev.local,http://nexops-staging.local"
+  # Empty until the observability stacks are installed. The API then reads from
+  # PostgreSQL and reports source="database" in its responses.
+  PROMETHEUS_URL: ""
+  LOKI_URL: ""
+  # Demo seeding is on in dev and off in production; the prod overlay patches this.
+  SEED_ENABLED: "true"

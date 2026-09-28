@@ -1,0 +1,92 @@
+# Values for grafana/grafana.
+#
+# adminPassword is set on the command line by install.sh from `openssl rand`,
+# so no password is ever committed here.
+
+persistence:
+  enabled: true
+  size: 2Gi
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+
+# Data sources are provisioned, not clicked. Reinstall Grafana and both come
+# back configured.
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.logging.svc.cluster.local:3100
+        jsonData:
+          maxLines: 1000
+          # Links a log line to the trace/metrics view. This is what lets a
+          # student jump from a Grafana chart spike straight to the log lines
+          # that produced it.
+          derivedFields:
+            - name: RequestId
+              matcherRegex: '"requestId":"([^"]+)"'
+              url: '$${__value.raw}'
+
+# The sidecar watches for ConfigMaps labelled grafana_dashboard=1 and imports
+# them, which is how monitoring/grafana-dashboards/ gets in.
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    searchNamespace: ALL
+    folder: /tmp/dashboards
+  datasources:
+    enabled: true
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: nexops
+        orgId: 1
+        folder: NexOps
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /tmp/dashboards
+
+# Community dashboards pulled by ID from grafana.com, so the cluster view works
+# without anyone building it by hand.
+dashboards:
+  default:
+    kubernetes-cluster:
+      gnetId: 315          # Kubernetes cluster monitoring
+      revision: 3
+      datasource: Prometheus
+    node-exporter:
+      gnetId: 1860         # Node Exporter Full
+      revision: 37
+      datasource: Prometheus
+    argocd:
+      gnetId: 14584        # Argo CD
+      revision: 1
+      datasource: Prometheus
+
+grafana.ini:
+  server:
+    root_url: "%(protocol)s://%(domain)s/"
+  auth.anonymous:
+    enabled: false
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  users:
+    allow_sign_up: false

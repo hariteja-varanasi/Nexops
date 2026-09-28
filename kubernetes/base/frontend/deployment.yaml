@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    app.kubernetes.io/name: nexops-frontend
+    app.kubernetes.io/part-of: nexops
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/part-of: nexops
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101              # nginx uid in the alpine image
+      containers:
+        - name: frontend
+          image: nexops-frontend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # NGINX proxies /api here, so the browser stays on one origin.
+            - name: BACKEND_HOST
+              value: "backend"
+            - name: BACKEND_PORT
+              value: "4000"
+          # /healthz is served by NGINX itself and does not touch the backend,
+          # so a backend outage does not also restart every frontend pod.
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 25m,  memory: 48Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          # NGINX writes its cache, pid and the envsubst output at runtime, so
+          # those paths get emptyDir volumes rather than a writable root.
+          volumeMounts:
+            - { name: cache,  mountPath: /var/cache/nginx }
+            - { name: run,    mountPath: /var/run }
+            - { name: confd,  mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: cache, emptyDir: {} }
+        - { name: run,   emptyDir: {} }
+        - { name: confd, emptyDir: {} }
+      terminationGracePeriodSeconds: 20

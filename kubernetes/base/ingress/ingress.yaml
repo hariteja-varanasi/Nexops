@@ -1,0 +1,53 @@
+# NGINX Ingress: the single HTTP entry point into the cluster.
+#
+# Routing is path-based on one host:
+#   /api  -> backend Service  (the API)
+#   /     -> frontend Service (the React bundle)
+#
+# The frontend container also proxies /api internally, so either path works.
+# Routing at the Ingress means API traffic never passes through NGINX twice.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nexops
+  labels:
+    app.kubernetes.io/part-of: nexops
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "2m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    # Rate limit per client IP. Cheap protection for a demo box on a public EC2.
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nexops.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port: { name: http }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { name: http }
+    # Second rule with no host, so the app also answers on the EC2 public IP
+    # directly. Without this you would need a hosts-file entry to see anything.
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port: { name: http }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { name: http }

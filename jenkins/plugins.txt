@@ -1,0 +1,16 @@
+# Plugins the NexOps Jenkinsfile needs. Pinned versions are deliberate:
+# "latest" here means a plugin update can break the pipeline overnight.
+workflow-aggregator:600.vb_57cdd26fdd7
+git:5.4.1
+github:1.40.0
+github-branch-source:1797.v86fdb_4d57d43
+pipeline-stage-view:2.34
+credentials-binding:681.vf91669a_32e45
+timestamper:1.27
+ws-cleanup:0.46
+docker-workflow:580.vc0c340686b_54
+sonar:2.17.2
+configuration-as-code:1836.vccda_4a_122a_a_e
+job-dsl:1.87
+blueocean:1.27.16
+matrix-auth:3.2.2

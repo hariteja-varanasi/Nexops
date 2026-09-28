@@ -1,0 +1,76 @@
+# Values for grafana/promtail.
+#
+# Promtail runs as a DaemonSet and tails /var/log/pods on each node. The
+# pipeline below turns raw container output into labelled, parsed streams.
+
+daemonset:
+  enabled: true
+
+resources:
+  requests: { cpu: 50m,  memory: 96Mi }
+  limits:   { cpu: 200m, memory: 256Mi }
+
+# Tolerate the control-plane taint so its pods are collected too.
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+config:
+  clients:
+    - url: http://loki.logging.svc.cluster.local:3100/loki/api/v1/push
+      # Batch before sending; one HTTP request per log line would melt Loki.
+      batchwait: 1s
+      batchsize: 1048576
+
+  snippets:
+    pipelineStages:
+      # 1. Unwrap the CRI envelope that kubelet writes around every line.
+      - cri: {}
+
+      # 2. The NexOps backend logs structured JSON (pino), so parse it and
+      #    promote the useful fields. Non-JSON lines fall through untouched.
+      - match:
+          selector: '{app=~"backend|nexops-backend"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  msg: msg
+                  requestId: requestId
+                  route: path
+                  status: status
+                  durationMs: durationMs
+            # pino uses numeric levels; map them to names humans filter on.
+            - template:
+                source: level_name
+                template: >-
+                  {{ if eq .level "10" }}TRACE{{ else if eq .level "20" }}DEBUG
+                  {{ else if eq .level "30" }}INFO{{ else if eq .level "40" }}WARN
+                  {{ else if eq .level "50" }}ERROR{{ else if eq .level "60" }}FATAL
+                  {{ else }}INFO{{ end }}
+            # Only low-cardinality fields become labels. requestId and route
+            # stay as parsed fields, queryable with `| json` without exploding
+            # the index into millions of streams.
+            - labels:
+                level: level_name
+
+      # 3. Drop the noisiest health-check lines. The probes fire every 10s per
+      #    pod and would otherwise dominate storage with nothing of interest.
+      - match:
+          selector: '{namespace=~"nexops-.*"}'
+          stages:
+            - drop:
+                expression: '.*"path":"/api/health/live".*'
+                drop_counter_reason: liveness_probe_noise
+
+  # Adds the label every NexOps query starts from: {job="nexops"}.
+  snippets.extraRelabelConfigs:
+    - source_labels: [__meta_kubernetes_namespace]
+      regex: 'nexops-.*'
+      target_label: job
+      replacement: nexops
+    - source_labels: [__meta_kubernetes_pod_label_app]
+      target_label: app
+    - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+      target_label: component

@@ -1,0 +1,54 @@
+# Desired state: nexops-prod
+#
+# Argo CD will NOT apply this automatically. After committing a change here the
+# Application shows OutOfSync until someone runs:
+#
+#   argocd app diff nexops-prod        # read what is about to change
+#   argocd app sync nexops-prod        # approve it
+image:
+  # Pinned, never "latest". A rollback is only meaningful if you can name the
+  # version you are rolling back to.
+  tag: "1.0.0"
+
+backend:
+  replicaCount: 2
+  # Production migrates the schema but does not seed demo rows.
+  initCommand: ["node", "src/db/migrate.js"]
+frontend:
+  replicaCount: 2
+
+ingress:
+  host: nexops.local
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+
+config:
+  nodeEnv: production
+  logLevel: warn
+  corsOrigin: "http://nexops.local"
+  seedEnabled: false
+  prometheusUrl: "http://prometheus-server.monitoring.svc.cluster.local"
+  lokiUrl: "http://loki.logging.svc.cluster.local:3100"
+
+postgres:
+  storage: 5Gi
+  resources:
+    limits:
+      cpu: 800m
+      memory: 1Gi
+
+# The chart must not create the Secret here. Create it once, out of band:
+#   kubectl -n nexops-prod create secret generic nexops-prod-secrets \
+#     --from-literal=POSTGRES_DB=nexops \
+#     --from-literal=POSTGRES_USER=nexops \
+#     --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 24)" \
+#     --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
+#     --from-literal=SEED_ADMIN_USERNAME=admin \
+#     --from-literal=SEED_ADMIN_PASSWORD="$(openssl rand -base64 16)" \
+#     --from-literal=DATABASE_URL="postgresql://nexops:<password>@nexops-postgres:5432/nexops"
+secrets:
+  createSecret: false
+  existingSecret: nexops-prod-secrets

@@ -1,0 +1,85 @@
+# Jenkins Configuration as Code.
+#
+# Everything here is reproducible: delete the jenkins-home volume, start again,
+# and you get the same Jenkins. Nothing is clicked through a wizard.
+#
+# Credentials are deliberately NOT defined here. Adding them by hand once is
+# better than committing a file that invites someone to paste a token into Git.
+
+jenkins:
+  systemMessage: "NexOps CI — configured by JCasC. Do not configure by hand."
+  numExecutors: 2
+  mode: NORMAL
+  scmCheckoutRetryCount: 2
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+
+  authorizationStrategy:
+    loggedInAuthenticationStrategy:
+      allowAnonymousRead: false
+
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+    adminAddress: "jenkins@nexops.local"
+
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: "SonarQube"
+        serverUrl: "http://sonarqube:9000"
+        # Add the token by hand as the 'sonarqube-token' Secret text credential,
+        # then reference it here.
+        credentialsId: "sonarqube-token"
+
+  globalLibraries:
+    libraries: []
+
+tool:
+  git:
+    installations:
+      - name: Default
+        home: /usr/bin/git
+  nodejs:
+    installations:
+      - name: node22
+        home: /usr/bin/node
+
+jobs:
+  - script: >
+      pipelineJob('nexops') {
+        description('NexOps end-to-end pipeline: build, scan, push, GitOps update')
+        properties {
+          githubProjectUrl('https://github.com/ravinadh777/e2edevopsproject')
+        }
+        triggers {
+          githubPush()
+          // Fallback for a box with no public webhook endpoint: poll every
+          // 2 minutes. Remove this once the GitHub webhook works.
+          scm('H/2 * * * *')
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/ravinadh777/e2edevopsproject.git')
+                  credentials('github-credentials')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(false)
+          }
+        }
+      }

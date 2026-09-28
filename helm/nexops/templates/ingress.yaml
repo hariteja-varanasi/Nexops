@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nexops.fullname" . }}
+  labels:
+    {{- include "nexops.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ .Values.ingress.host | quote }}]
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # /api must come first: the ingress controller matches the longest
+          # prefix, but listing it first keeps the intent obvious.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nexops.fullname" . }}-backend
+                port: { name: http }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nexops.fullname" . }}-frontend
+                port: { name: http }
+    {{- if .Values.ingress.includeIPRule }}
+    # Host-less rule so the app also answers on the EC2 public IP, with no
+    # /etc/hosts entry needed.
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nexops.fullname" . }}-backend
+                port: { name: http }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nexops.fullname" . }}-frontend
+                port: { name: http }
+    {{- end }}
+{{- end }}

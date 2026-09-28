@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nexops-prod
+
+resources:
+  - ../../base
+  - ../../base/ingress/networkpolicy.yaml
+
+images:
+  - name: nexops-backend
+    newName: docker.io/ravinadh777/nexops-backend
+    newTag: "1.0.0"          # production pins an exact tag, never :latest
+  - name: nexops-frontend
+    newName: docker.io/ravinadh777/nexops-frontend
+    newTag: "1.0.0"
+
+replicas:
+  - { name: backend,  count: 2 }
+  - { name: frontend, count: 2 }
+
+patches:
+  # No demo data in production, and the seed user is not created.
+  - target: { kind: Deployment, name: backend }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/initContainers/0/command
+        value: ["node", "src/db/migrate.js"]
+  # More headroom for the database that holds real history.
+  - target: { kind: StatefulSet, name: postgres }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 5Gi
+
+configMapGenerator:
+  - name: nexops-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=warn
+      - SEED_ENABLED=false

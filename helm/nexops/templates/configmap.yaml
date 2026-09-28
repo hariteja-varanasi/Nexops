@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nexops.fullname" . }}-config
+  labels:
+    {{- include "nexops.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.config.nodeEnv | quote }}
+  PORT: {{ .Values.backend.port | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  JWT_EXPIRES_IN: {{ .Values.config.jwtExpiresIn | quote }}
+  CACHE_TTL_SECONDS: {{ .Values.config.cacheTtlSeconds | quote }}
+  CORS_ORIGIN: {{ .Values.config.corsOrigin | quote }}
+  SEED_ENABLED: {{ .Values.config.seedEnabled | quote }}
+  {{- if .Values.redis.enabled }}
+  REDIS_URL: {{ printf "redis://%s:6379" (include "nexops.redisHost" .) | quote }}
+  {{- end }}
+  PROMETHEUS_URL: {{ .Values.config.prometheusUrl | quote }}
+  LOKI_URL: {{ .Values.config.lokiUrl | quote }}

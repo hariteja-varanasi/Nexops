@@ -1,0 +1,70 @@
+# Values for grafana/loki (v6 chart).
+#
+# Loki indexes labels, not log content. That is why the labels Promtail attaches
+# matter so much, and why you should never label by something high-cardinality
+# like request ID — it would create a stream per request.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false          # no multi-tenancy on a training cluster
+
+  commonConfig:
+    replication_factor: 1
+
+  storage:
+    type: filesystem
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+  limits_config:
+    retention_period: 168h     # 7 days
+    # kind nodes have clock skew against the host often enough that this matters:
+    # without it, log lines arriving "in the past" are rejected outright.
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_query_series: 5000
+    ingestion_rate_mb: 8
+    ingestion_burst_size_mb: 16
+    allow_structured_metadata: true
+
+  compactor:
+    working_directory: /var/loki/compactor
+    retention_enabled: true
+    delete_request_store: filesystem
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 1,    memory: 1Gi }
+
+# Everything below is the distributed topology, off in single-binary mode.
+read:    { replicas: 0 }
+write:   { replicas: 0 }
+backend: { replicas: 0 }
+
+chunksCache:
+  enabled: false      # memcached would use more RAM than this box can spare
+resultsCache:
+  enabled: false
+
+lokiCanary:
+  enabled: false
+
+test:
+  enabled: false
+
+gateway:
+  enabled: false      # queries go straight to the Loki Service

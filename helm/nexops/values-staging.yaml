@@ -1,0 +1,14 @@
+# helm upgrade --install nexops-staging ./helm/nexops -n nexops-staging -f helm/nexops/values-staging.yaml
+image:
+  tag: latest
+backend:
+  replicaCount: 2
+frontend:
+  replicaCount: 1
+ingress:
+  host: nexops-staging.local
+config:
+  nodeEnv: production
+  logLevel: info
+  corsOrigin: "http://nexops-staging.local"
+  seedEnabled: true

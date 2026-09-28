@@ -1,0 +1,17 @@
+# Headless Service (clusterIP: None): required by the StatefulSet so each pod
+# gets a stable DNS name, postgres-0.postgres.<namespace>.svc.cluster.local.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: nexops
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

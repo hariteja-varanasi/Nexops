@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+    app.kubernetes.io/name: nexops-backend
+    app.kubernetes.io/part-of: nexops
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5          # keeps 5 ReplicaSets, so `rollout undo` has somewhere to go
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0            # never drop below the current replica count
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/part-of: nexops
+      annotations:
+        # Tells the Prometheus scrape config to collect from this pod.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4000"
+        prometheus.io/path: "/api/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      # The API cannot serve anything until the schema exists. This init
+      # container runs the migration, and Kubernetes retries it until it
+      # succeeds, so pod startup ordering is handled without a sleep loop.
+      initContainers:
+        - name: migrate
+          image: nexops-backend:local
+          imagePullPolicy: IfNotPresent
+          command: ["node", "src/db/seed.js"]
+          envFrom:
+            - configMapRef: { name: nexops-config }
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: DATABASE_URL } }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: JWT_SECRET } }
+            - name: SEED_ADMIN_USERNAME
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: SEED_ADMIN_USERNAME } }
+            - name: SEED_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: SEED_ADMIN_PASSWORD } }
+          resources:
+            requests: { cpu: 50m,  memory: 128Mi }
+            limits:   { cpu: 400m, memory: 320Mi }
+      containers:
+        - name: backend
+          image: nexops-backend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          envFrom:
+            - configMapRef: { name: nexops-config }
+          env:
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: DATABASE_URL } }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: nexops-secrets, key: JWT_SECRET } }
+            - name: APP_VERSION
+              value: "1.0.0"
+          # Three probes, three different jobs:
+          #   startup   - gives a slow first boot time without a long liveness delay
+          #   readiness - checks PostgreSQL, so a pod leaves the Service when the DB is gone
+          #   liveness  - process-only, so a database blip never restarts every pod
+          startupProbe:
+            httpGet: { path: /api/health/live, port: http }
+            periodSeconds: 5
+            failureThreshold: 24          # up to 2 minutes to start
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /api/health/live, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits:   { cpu: 600m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      # Gives in-flight requests time to finish. Matches the 10s forced-exit
+      # timer in src/server.js.
+      terminationGracePeriodSeconds: 30
+      # Spread replicas across the two kind workers so losing one node does not
+      # take the whole API down.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: backend }

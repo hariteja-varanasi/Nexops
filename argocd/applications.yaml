@@ -1,0 +1,113 @@
+# =====================================================================
+# Argo CD Applications - one per environment.
+#
+# The sync policy is the interesting part and it is deliberately different
+# per environment:
+#
+#   dev      automated + selfHeal + prune  -> Git is law, instantly
+#   staging  automated + selfHeal          -> Git is law, but nothing is deleted
+#   prod     manual                        -> a human approves every change
+#
+# selfHeal is what makes GitOps more than scripted deploys: edit a Deployment
+# with kubectl and Argo CD reverts it within seconds, because the cluster is
+# not the source of truth. Git is.
+# =====================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexops-dev
+  namespace: argocd
+  finalizers:
+    # Without this, deleting the Application leaves its workloads orphaned.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    targetRevision: main
+    path: helm/nexops
+    helm:
+      releaseName: nexops
+      valueFiles:
+        - values.yaml
+        - ../../gitops/dev/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexops-dev
+  syncPolicy:
+    automated:
+      prune: true        # delete cluster objects that are no longer in Git
+      selfHeal: true     # revert manual kubectl edits
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }
+  revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexops-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    targetRevision: main
+    path: helm/nexops
+    helm:
+      releaseName: nexops
+      valueFiles:
+        - values.yaml
+        - ../../gitops/staging/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexops-staging
+  syncPolicy:
+    automated:
+      prune: false       # staging keeps orphans around so they can be inspected
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff: { duration: 15s, factor: 2, maxDuration: 5m }
+  revisionHistoryLimit: 10
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexops-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    targetRevision: main
+    path: helm/nexops
+    helm:
+      releaseName: nexops
+      valueFiles:
+        - values.yaml
+        - ../../gitops/production/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nexops-prod
+  # No syncPolicy.automated. Production shows OutOfSync and waits for:
+  #   argocd app sync nexops-prod
+  # or the Sync button in the UI. This is the promotion gate.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  revisionHistoryLimit: 20     # deeper history, because this is what gets rolled back

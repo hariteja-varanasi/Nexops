@@ -1,0 +1,31 @@
+# helm upgrade --install nexops-prod ./helm/nexops -n nexops-prod -f helm/nexops/values-prod.yaml
+#
+# Production differences that matter:
+#   - the image tag is pinned, never `latest`
+#   - the init container migrates but does not seed demo data
+#   - the Secret is created out of band, not by the chart
+image:
+  tag: "1.0.0"
+backend:
+  replicaCount: 2
+  initCommand: ["node", "src/db/migrate.js"]
+frontend:
+  replicaCount: 2
+postgres:
+  storage: 5Gi
+  resources:
+    limits: { cpu: 800m, memory: 1Gi }
+ingress:
+  host: nexops.local
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+config:
+  nodeEnv: production
+  logLevel: warn
+  corsOrigin: "http://nexops.local"
+  seedEnabled: false
+secrets:
+  createSecret: false
+  existingSecret: nexops-prod-secrets

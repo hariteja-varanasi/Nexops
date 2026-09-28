@@ -1,0 +1,23 @@
+# Base manifests, namespace-agnostic. Each overlay in ../overlays/ sets the
+# namespace, the image tags and the replica counts for one environment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+commonLabels:
+  app.kubernetes.io/part-of: nexops
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - config/configmap.yaml
+  - config/secret.yaml
+  - config/serviceaccount.yaml
+  - postgres/statefulset.yaml
+  - postgres/service.yaml
+  - redis/deployment.yaml
+  - redis/service.yaml
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - backend/hpa.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - ingress/ingress.yaml

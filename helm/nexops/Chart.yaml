@@ -1,0 +1,16 @@
+apiVersion: v2
+name: nexops
+description: NexOps - DevOps application management platform (frontend, API, PostgreSQL, Redis)
+type: application
+
+# version is the chart version, bumped when templates change.
+# appVersion is the application version, bumped when the images change.
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords: [devops, kubernetes, gitops, training]
+home: https://github.com/ravinadh777/e2edevopsproject
+sources:
+  - https://github.com/ravinadh777/e2edevopsproject
+maintainers:
+  - name: NexOps

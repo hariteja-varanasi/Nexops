@@ -1,0 +1,41 @@
+# Three namespaces in one kind cluster. This is what lets a single EC2 box
+# host dev, staging and production side by side with real isolation:
+# separate Secrets, separate quotas, separate Argo CD Applications.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexops-dev
+  labels:
+    app.kubernetes.io/part-of: nexops
+    nexops.io/environment: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexops-staging
+  labels:
+    app.kubernetes.io/part-of: nexops
+    nexops.io/environment: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexops-prod
+  labels:
+    app.kubernetes.io/part-of: nexops
+    nexops.io/environment: prod
+---
+# A quota per namespace so one runaway Deployment cannot starve the other two
+# environments on this single-node-per-worker cluster.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: nexops-quota
+  namespace: nexops-prod
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 6Gi
+    limits.cpu: "8"
+    limits.memory: 10Gi
+    persistentvolumeclaims: "4"

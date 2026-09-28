@@ -1,0 +1,50 @@
+# An AppProject scopes what these Applications are allowed to do. The default
+# project permits everything, which is fine for a demo and wrong for a real
+# cluster — this is what the tightened version looks like.
+#
+#   kubectl apply -f argocd/project.yaml
+#   then change `project: default` to `project: nexops` in applications.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nexops
+  namespace: argocd
+spec:
+  description: NexOps training platform
+
+  # Only this repository may be deployed from.
+  sourceRepos:
+    - https://github.com/ravinadh777/e2edevopsproject.git
+
+  # Only these three namespaces may be deployed to. An Application that tries
+  # to touch kube-system is rejected.
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: nexops-dev }
+    - { server: https://kubernetes.default.svc, namespace: nexops-staging }
+    - { server: https://kubernetes.default.svc, namespace: nexops-prod }
+
+  # No cluster-scoped resources at all: this app has no business creating
+  # ClusterRoles or CRDs.
+  clusterResourceWhitelist: []
+
+  namespaceResourceWhitelist:
+    - { group: '', kind: ConfigMap }
+    - { group: '', kind: Secret }
+    - { group: '', kind: Service }
+    - { group: '', kind: ServiceAccount }
+    - { group: '', kind: PersistentVolumeClaim }
+    - { group: apps, kind: Deployment }
+    - { group: apps, kind: StatefulSet }
+    - { group: networking.k8s.io, kind: Ingress }
+    - { group: networking.k8s.io, kind: NetworkPolicy }
+    - { group: autoscaling, kind: HorizontalPodAutoscaler }
+
+  # Production changes need a second pair of eyes.
+  roles:
+    - name: developer
+      description: Sync dev and staging, read production
+      policies:
+        - p, proj:nexops:developer, applications, sync, nexops/nexops-dev, allow
+        - p, proj:nexops:developer, applications, sync, nexops/nexops-staging, allow
+        - p, proj:nexops:developer, applications, get, nexops/*, allow
+        - p, proj:nexops:developer, applications, sync, nexops/nexops-prod, deny

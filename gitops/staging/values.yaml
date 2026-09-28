@@ -1,0 +1,30 @@
+# Desired state: nexops-staging
+#
+# Promoted by hand from dev once dev looks healthy:
+#   sed -i 's|^\( *tag:\).*|\1 "<version>"|' gitops/staging/values.yaml
+image:
+  tag: "1.0.0"
+
+backend:
+  replicaCount: 2
+frontend:
+  replicaCount: 1
+
+ingress:
+  host: nexops-staging.local
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+
+config:
+  nodeEnv: production
+  logLevel: info
+  corsOrigin: "http://nexops-staging.local"
+  seedEnabled: true
+  prometheusUrl: "http://prometheus-server.monitoring.svc.cluster.local"
+  lokiUrl: "http://loki.logging.svc.cluster.local:3100"
+
+postgres:
+  storage: 2Gi

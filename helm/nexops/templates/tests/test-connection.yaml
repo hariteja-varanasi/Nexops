@@ -1,0 +1,29 @@
+# helm test nexops -n nexops-dev
+#
+# Hits the readiness endpoint from inside the cluster and fails the release if
+# the API is not actually serving.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "nexops.fullname" . }}-test-connection"
+  labels:
+    {{- include "nexops.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: curl
+      image: curlimages/curl:8.10.1
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          echo "--- backend readiness ---"
+          curl -fsS http://{{ include "nexops.fullname" . }}-backend:{{ .Values.backend.port }}/api/health
+          echo
+          echo "--- prometheus metrics ---"
+          curl -fsS http://{{ include "nexops.fullname" . }}-backend:{{ .Values.backend.port }}/api/metrics | head -5
+          echo "--- frontend ---"
+          curl -fsS http://{{ include "nexops.fullname" . }}-frontend/healthz

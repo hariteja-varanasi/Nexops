@@ -1,0 +1,18 @@
+# helm upgrade --install nexops-dev ./helm/nexops -n nexops-dev -f helm/nexops/values-dev.yaml
+image:
+  tag: latest
+backend:
+  replicaCount: 1
+frontend:
+  replicaCount: 1
+ingress:
+  host: nexops-dev.local
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+config:
+  nodeEnv: development
+  logLevel: debug
+  corsOrigin: "http://nexops-dev.local"
+  seedEnabled: true

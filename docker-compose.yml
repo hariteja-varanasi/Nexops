@@ -1,0 +1,128 @@
+# =====================================================================
+# NexOps - local development stack
+#
+#   docker compose up -d --build
+#   open http://localhost
+#
+# This is PHASE 8 of the build order: the whole application must work here
+# before any of it goes to Kubernetes. If it is broken in Compose, it will be
+# broken in the cluster too, just harder to debug.
+# =====================================================================
+
+name: nexops
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexops}
+      POSTGRES_USER: ${POSTGRES_USER:-nexops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Speeds up first start; the schema is applied by the backend migration.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexops} -d ${POSTGRES_DB:-nexops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks: [nexops]
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexops-redis
+    restart: unless-stopped
+    # No persistence: this cache is disposable by design. Losing it costs
+    # latency on the next request, nothing else.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [nexops]
+
+  # Runs the schema migration and demo seed, then exits. The backend waits for
+  # this to complete, so the API never starts against an empty database.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexops-migrate
+    command: ["node", "src/db/seed.js"]
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nexops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nexops}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SEED_ENABLED: ${SEED_ENABLED:-true}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+    networks: [nexops]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-nexops}/nexops-backend:${IMAGE_TAG:-local}
+    container_name: nexops-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nexops}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nexops}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost,http://localhost:5173}
+      # Left empty locally: the Logs and Monitoring pages then read from
+      # PostgreSQL and say so. Point them at the cluster to switch to live data.
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      LOKI_URL: ${LOKI_URL:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    networks: [nexops]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    image: ${DOCKERHUB_USERNAME:-nexops}/nexops-frontend:${IMAGE_TAG:-local}
+    container_name: nexops-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: 4000
+    depends_on:
+      backend: { condition: service_started }
+    ports:
+      - "${FRONTEND_PORT:-80}:8080"
+    networks: [nexops]
+
+volumes:
+  postgres-data:
+    name: nexops-postgres-data
+
+networks:
+  nexops:
+    name: nexops
+    driver: bridge
