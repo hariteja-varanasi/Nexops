@@ -32,7 +32,7 @@ step "metrics-server"
 # kind's kubelets serve their metrics endpoint with a self-signed certificate,
 # so metrics-server needs --kubelet-insecure-tls or it never becomes ready.
 # This is a kind-specific concession, not something to copy to a real cluster.
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/metrics-server/v0.7.2/deploy/components.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml
 kubectl -n kube-system patch deployment metrics-server --type=json \
   -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' \
   2>/dev/null || info "metrics-server already patched"
