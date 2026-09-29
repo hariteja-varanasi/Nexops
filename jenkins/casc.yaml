@@ -59,7 +59,7 @@ jobs:
       pipelineJob('nexops') {
         description('NexOps end-to-end pipeline: build, scan, push, GitOps update')
         properties {
-          githubProjectUrl('https://github.com/ravinadh777/e2edevopsproject')
+          githubProjectUrl('https://github.com/hariteja-varanasi/Nexops')
         }
         triggers {
           githubPush()
@@ -72,7 +72,7 @@ jobs:
             scm {
               git {
                 remote {
-                  url('https://github.com/ravinadh777/e2edevopsproject.git')
+                  url('https://github.com/hariteja-varanasi/Nexops.git')
                   credentials('github-credentials')
                 }
                 branch('*/main')

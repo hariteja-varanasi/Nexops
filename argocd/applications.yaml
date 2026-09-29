@@ -24,7 +24,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    repoURL: https://github.com/hariteja-varanasi/Nexops.git
     targetRevision: main
     path: helm/nexops
     helm:
@@ -59,7 +59,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    repoURL: https://github.com/hariteja-varanasi/Nexops.git
     targetRevision: main
     path: helm/nexops
     helm:
@@ -92,7 +92,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ravinadh777/e2edevopsproject.git
+    repoURL: https://github.com/hariteja-varanasi/Nexops.git
     targetRevision: main
     path: helm/nexops
     helm:

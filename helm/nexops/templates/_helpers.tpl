@@ -67,7 +67,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
      registry and repository are both optional so the same chart works for a
      registry image and for an image side-loaded into kind:
 
-       registry=docker.io repository=ravinadh777  -> docker.io/ravinadh777/nexops-backend:1.0.0
+       registry=docker.io repository=haritejarv  -> docker.io/haritejarv/nexops-backend:1.0.0
        registry="" repository=""                  -> nexops-backend:local
 
      The second form is what scripts/load-images.sh produces, and it must not

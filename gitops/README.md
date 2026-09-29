@@ -20,7 +20,7 @@ gitops/
 commit to main
       │
       ▼
-Jenkins builds, scans, pushes  →  docker.io/ravinadh777/nexops-backend:1.0.42
+Jenkins builds, scans, pushes  →  docker.io/haritejarv/nexops-backend:1.0.42
       │
       ▼
 Jenkins rewrites gitops/dev/values.yaml   tag: "1.0.42"

@@ -34,7 +34,7 @@ resource "aws_instance" "nexops" {
   # deliberately does NOT run setup.sh, so the first cluster build is something
   # the student watches rather than something that already happened.
   user_data = templatefile("${path.module}/user-data.sh", {
-    repo_url = "https://github.com/ravinadh777/e2edevopsproject.git"
+    repo_url = "https://github.com/hariteja-varanasi/Nexops.git"
   })
 
   # Replaces the instance if the bootstrap script changes.

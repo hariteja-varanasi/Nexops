@@ -27,7 +27,7 @@ pipeline {
   }
 
   environment {
-    DOCKERHUB_USERNAME = 'ravinadh777'
+    DOCKERHUB_USERNAME = 'haritejarv'
     BACKEND_IMAGE      = "${DOCKERHUB_USERNAME}/nexops-backend"
     FRONTEND_IMAGE     = "${DOCKERHUB_USERNAME}/nexops-frontend"
 
@@ -39,7 +39,7 @@ pipeline {
     SONAR_HOST_URL     = 'http://sonarqube:9000'
     SONAR_PROJECT_KEY  = 'nexops'
 
-    GITOPS_REPO        = 'https://github.com/ravinadh777/e2edevopsproject.git'
+    GITOPS_REPO        = 'https://github.com/hariteja-varanasi/Nexops.git'
     GITOPS_BRANCH      = 'main'
 
     // Argo CD auto-syncs dev on every push. Promotion to staging and production
@@ -275,7 +275,7 @@ pipeline {
               echo "no manifest change; nothing to commit"
             else
               git commit -m "deploy(${DEPLOY_ENV}): nexops ${IMAGE_TAG} from ${GIT_COMMIT_SHORT} [skip ci]"
-              git push "https://${GIT_USER}:${GIT_TOKEN}@github.com/ravinadh777/e2edevopsproject.git" HEAD:${GITOPS_BRANCH}
+              git push "https://${GIT_USER}:${GIT_TOKEN}@github.com/hariteja-varanasi/Nexops.git" HEAD:${GITOPS_BRANCH}
               echo "pushed GitOps update for ${IMAGE_TAG}"
             fi
           '''

@@ -78,11 +78,11 @@ async function seed() {
 
   // ---------------- projects ----------------
   const projects = [
-    ['Customer Portal', 'customer-portal', 'Self-service account, billing and support portal for end customers.', 'r.kumar', 'ravinadh777/customer-portal', 'prod'],
-    ['Payment Platform', 'payment-platform', 'Card and UPI payment capture, settlement and reconciliation.', 's.iyer', 'ravinadh777/payment-platform', 'prod'],
-    ['Notification Service', 'notification-service', 'Email, SMS and push fan-out with retry and dead-letter handling.', 'a.mehta', 'ravinadh777/notification-service', 'staging'],
-    ['Employee Portal', 'employee-portal', 'Internal HR, leave and asset management for staff.', 'r.kumar', 'ravinadh777/employee-portal', 'staging'],
-    ['DevOps Demo', 'devops-demo', 'The NexOps reference stack students deploy end to end.', 'admin', 'ravinadh777/e2edevopsproject', 'dev'],
+    ['Customer Portal', 'customer-portal', 'Self-service account, billing and support portal for end customers.', 'r.kumar', 'hariteja-varanasi/customer-portal', 'prod'],
+    ['Payment Platform', 'payment-platform', 'Card and UPI payment capture, settlement and reconciliation.', 's.iyer', 'hariteja-varanasi/payment-platform', 'prod'],
+    ['Notification Service', 'notification-service', 'Email, SMS and push fan-out with retry and dead-letter handling.', 'a.mehta', 'hariteja-varanasi/notification-service', 'staging'],
+    ['Employee Portal', 'employee-portal', 'Internal HR, leave and asset management for staff.', 'r.kumar', 'hariteja-varanasi/employee-portal', 'staging'],
+    ['DevOps Demo', 'devops-demo', 'The NexOps reference stack students deploy end to end.', 'admin', 'hariteja-varanasi/Nexops', 'dev'],
   ];
   const projIds = {};
   for (const [name, slug, description, owner, repo, envSlug] of projects) {
@@ -119,8 +119,8 @@ async function seed() {
        RETURNING id`,
       [projIds[projSlug], envIds[envSlug], name,
        `${name} service for the ${projSlug.replace(/-/g, ' ')} project.`,
-       version, `https://github.com/ravinadh777/${projSlug}.git`, language,
-       `docker.io/ravinadh777/${name}`, version.replace(/^v/, ''), ns,
+       version, `https://github.com/hariteja-varanasi/${projSlug}.git`, language,
+       `docker.io/haritejarv/${name}`, version.replace(/^v/, ''), ns,
        name, `${name}-svc`, pods || 1, pods, rand(80, 600), rand(128, 1024),
        health, status, sha(), rand(1, 120)]
     );
