@@ -17,7 +17,7 @@ application that shows you the deployment.
 ## Quick start
 
 ```bash
-git clone https://github.com/ravinadh777/e2edevopsproject.git nexops
+git clone https://github.com/hariteja-varanasi/Nexops.git nexops
 cd nexops
 
 ./scripts/setup-ec2.sh     # installs Docker, kubectl, kind, Helm, Trivy, Argo CD CLI

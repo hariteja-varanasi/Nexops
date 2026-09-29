@@ -9,8 +9,8 @@ version: 1.0.0
 appVersion: "1.0.0"
 
 keywords: [devops, kubernetes, gitops, training]
-home: https://github.com/ravinadh777/e2edevopsproject
+home: https://github.com/hariteja-varanasi/Nexops
 sources:
-  - https://github.com/ravinadh777/e2edevopsproject
+  - https://github.com/hariteja-varanasi/Nexops
 maintainers:
   - name: NexOps

@@ -15,7 +15,7 @@ Three routes, depending on where you are starting.
 The fastest way to see the application. No Kubernetes involved.
 
 ```bash
-git clone https://github.com/ravinadh777/e2edevopsproject.git nexops
+git clone https://github.com/hariteja-varanasi/Nexops.git nexops
 cd nexops
 
 cp .env.example .env

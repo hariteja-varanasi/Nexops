@@ -18,7 +18,7 @@ fullnameOverride: ""
 # ---------------------------------------------------------------- images
 image:
   registry: docker.io
-  repository: ravinadh777          # your Docker Hub account
+  repository: haritejarv          # your Docker Hub account
   backend: nexops-backend
   frontend: nexops-frontend
   # One tag for both images: they are built from the same commit by the same

@@ -15,11 +15,11 @@ DOCKERHUB_USERNAME="${DOCKERHUB_USERNAME:-}"
 BACKEND_LOCAL="nexops-backend:${IMAGE_TAG}"
 FRONTEND_LOCAL="nexops-frontend:${IMAGE_TAG}"
 
-step "Building ${BACKEND_LOCAL}"
+step "Building ${BACKEND_LOCAL} with username ${DOCKERHUB_USERNAME}"
 docker build -t "${BACKEND_LOCAL}" "${REPO_ROOT}/backend"
 ok "backend built"
 
-step "Building ${FRONTEND_LOCAL}"
+step "Building ${FRONTEND_LOCAL} with username ${DOCKERHUB_USERNAME}"
 docker build -t "${FRONTEND_LOCAL}" "${REPO_ROOT}/frontend"
 ok "frontend built"
 

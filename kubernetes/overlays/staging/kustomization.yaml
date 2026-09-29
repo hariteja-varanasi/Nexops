@@ -8,10 +8,10 @@ resources:
 
 images:
   - name: nexops-backend
-    newName: docker.io/ravinadh777/nexops-backend
+    newName: docker.io/haritejarv/nexops-backend
     newTag: latest
   - name: nexops-frontend
-    newName: docker.io/ravinadh777/nexops-frontend
+    newName: docker.io/haritejarv/nexops-frontend
     newTag: latest
 
 replicas:

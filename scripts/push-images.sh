@@ -2,7 +2,7 @@
 # Pushes the images to Docker Hub. Jenkins does this in the pipeline; this
 # script is for doing it by hand the first time.
 #
-#   export DOCKERHUB_USERNAME=ravinadh777
+#   export DOCKERHUB_USERNAME=haritejarv
 #   echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 #   IMAGE_TAG=1.0.0 ./scripts/push-images.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

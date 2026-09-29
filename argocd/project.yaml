@@ -14,7 +14,7 @@ spec:
 
   # Only this repository may be deployed from.
   sourceRepos:
-    - https://github.com/ravinadh777/e2edevopsproject.git
+    - https://github.com/hariteja-varanasi/Nexops.git
 
   # Only these three namespaces may be deployed to. An Application that tries
   # to touch kube-system is rejected.

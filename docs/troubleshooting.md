@@ -172,7 +172,7 @@ you genuinely must, use a `.trivyignore` with an expiry date and a reason.
 ```bash
 # The PAT needs `repo` scope and must not be expired.
 # Test it:
-git ls-remote https://<user>:<token>@github.com/ravinadh777/e2edevopsproject.git
+git ls-remote https://<user>:<token>@github.com/hariteja-varanasi/Nexops.git
 ```
 
 **Argo CD shows Synced but the old version is still running**
